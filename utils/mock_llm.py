@@ -1,19 +1,13 @@
-"""Mock LLM — CHO SẴN, KHÔNG CẦN SỬA.
+"""Mock LLM used by the lab.
 
-Trả lời tất định (cùng câu hỏi → cùng câu trả lời) nên không cần API key,
-không tốn tiền, và test luôn cho kết quả ổn định.
-
-Dùng:
-    from utils.mock_llm import ask_llm
-    result = ask_llm("Docker là gì?", history=[...])
-    result["answer"], result["tokens_in"], result["tokens_out"], result["cost_usd"]
+The function is deterministic: the same question returns the same style of
+answer, so tests are stable and no real LLM API key is needed.
 """
 
 from __future__ import annotations
 
 import hashlib
 
-# Giá giả lập, tính theo 1.000 token (giống thang giá gpt-4o-mini)
 PRICE_INPUT_PER_1K = 0.00015
 PRICE_OUTPUT_PER_1K = 0.00060
 
@@ -22,7 +16,7 @@ _TEMPLATES = [
     "Điểm mấu chốt là tách cấu hình ra khỏi code và giữ service ở trạng thái stateless.",
     "Câu hỏi hay. {q} thường được giải quyết bằng cách chuẩn hóa môi trường chạy: "
     "cùng một image chạy giống nhau ở laptop và trên cloud.",
-    "Ngắn gọn: {q} phụ thuộc vào ba yếu tố — cấu hình qua biến môi trường, "
+    "Ngắn gọn: {q} phụ thuộc vào ba yếu tố: cấu hình qua biến môi trường, "
     "health check để orchestrator biết trạng thái, và giới hạn tài nguyên.",
     "Với {q}, cách làm phổ biến trong production là đặt một lớp gateway phía trước "
     "để lo authentication, rate limiting và bảo vệ chi phí.",
@@ -30,20 +24,12 @@ _TEMPLATES = [
 
 
 def _estimate_tokens(text: str) -> int:
-    """Ước lượng thô: ~4 ký tự / token, tối thiểu 1."""
+    """Rough estimate: about 4 characters per token, minimum 1."""
     return max(1, len(text) // 4)
 
 
 def ask_llm(question: str, history: list[dict] | None = None) -> dict:
-    """Giả lập một lượt gọi LLM.
-
-    Args:
-        question: câu hỏi của người dùng.
-        history: lịch sử hội thoại, list các dict {"role": ..., "content": ...}.
-
-    Returns:
-        dict gồm answer, tokens_in, tokens_out, cost_usd.
-    """
+    """Simulate one LLM call."""
     history = history or []
     digest = hashlib.sha256(question.strip().lower().encode("utf-8")).hexdigest()
     template = _TEMPLATES[int(digest[:8], 16) % len(_TEMPLATES)]
