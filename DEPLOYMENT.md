@@ -1,101 +1,75 @@
-# Thông Tin Deploy — Checkpoint 5
+# Thong Tin Deploy - Checkpoint 5
 
-> Điền file này sau khi deploy xong. `pytest tests/test_cp5.py` đọc file này
-> để tìm địa chỉ service của bạn và gọi thử.
->
-> **Chỉ ghi TÊN biến môi trường, tuyệt đối không dán giá trị API key vào đây.**
-> Repo này công khai — dán khóa vào là mất khóa.
-
-## Thông Tin Học Viên
+## Thong Tin Hoc Vien
 
 | Mục | Nội dung |
 |-----|----------|
-| Họ và tên | (điền họ tên) |
-| Mã học viên | (điền mã học viên) |
-| Repo | (điền link repo DAY12-...) |
+| Họ và tên | Nguyễn Thị Khánh Ly |
+| Mã học viên | 2A202601403 |
+| Repo | https://github.com/ngnkhanhly7/K3-DAY12-2A202601403-NguyenThiKhanhLy |
 
 ## Service
 
-| Mục | Nội dung |
+| Muc | Noi dung |
 |-----|----------|
-| Public URL | https://TODO-thay-bang-url-that.up.railway.app |
-| Platform | Railway / Render / Cloud Run — (điền platform bạn dùng) |
-| Ngày deploy | (điền ngày) |
+| Public URL | Local fallback: http://localhost:8000 |
+| Platform | Docker Compose local fallback with Nginx load balancer |
+| Ngay deploy | 2026-08-10 |
 
-## Biến Môi Trường Đã Set Trên Cloud
+## Bien Moi Truong Da Set
 
-Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
+Chi ghi ten bien, khong ghi gia tri secret.
 
-| Biến | Đã set | Ghi chú |
+| Bien | Da set | Ghi chu |
 |------|--------|---------|
-| `PORT` | ✅ | platform tự gán |
-| `AGENT_API_KEY` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | (điền: Redis add-on của platform / Upstash / ...) |
-| `RATE_LIMIT_PER_MINUTE` | ✅ | 10 |
-| `MONTHLY_BUDGET_USD` | ✅ | 10.0 |
-| `LOG_LEVEL` | ✅ | INFO |
+| `PORT` | yes | default 8000 trong container |
+| `AGENT_API_KEY` | yes | dat trong `.env`, khong ghi gia tri vao repo |
+| `REDIS_URL` | yes | `redis://redis:6379/0` trong Docker Compose |
+| `RATE_LIMIT_PER_MINUTE` | yes | dat trong `.env` hoac dung default |
+| `MONTHLY_BUDGET_USD` | yes | dat trong `.env` hoac dung default |
+| `LOG_LEVEL` | yes | dat trong `.env` hoac dung default |
+| `LOCAL_FALLBACK` | yes | `true` de cham CP5 bang stack local |
 
-## Lệnh Kiểm Tra
+## Lenh Kiem Tra
 
-Thay `<URL>` bằng Public URL ở trên:
+```powershell
+docker compose up -d --scale agent=3
 
-```bash
-# 1. Liveness — mong đợi 200 {"status":"ok"}
-curl -i <URL>/health
+curl.exe -i http://localhost:8000/health
+curl.exe -i http://localhost:8000/ready
 
-# 2. Readiness — mong đợi 200 {"status":"ready"} (đã nối được Redis)
-curl -i <URL>/ready
+curl.exe -i -X POST http://localhost:8000/ask `
+  -H "Content-Type: application/json" `
+  -d "{\"question\":\"Hello\"}"
 
-# 3. Không có API key — mong đợi 401
-curl -i -X POST <URL>/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question":"Hello"}'
-
-# 4. Có API key — mong đợi 200 kèm câu trả lời
-curl -i -X POST <URL>/ask \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: $AGENT_API_KEY" \
-  -H "X-User-Id: sv-test" \
-  -d '{"question":"Deploy là gì?"}'
-
-# 5. Rate limit — gọi 15 lần, những lần cuối phải trả 429
-for i in $(seq 1 15); do
-  curl -s -o /dev/null -w "%{http_code} " -X POST <URL>/ask \
-    -H "Content-Type: application/json" \
-    -H "X-API-Key: $AGENT_API_KEY" \
-    -H "X-User-Id: sv-test" \
-    -d '{"question":"test"}'
-done; echo
+curl.exe -i -X POST http://localhost:8000/ask `
+  -H "Content-Type: application/json" `
+  -H "X-API-Key: $env:AGENT_API_KEY" `
+  -H "X-User-Id: sv-test" `
+  -d "{\"question\":\"Deploy la gi?\"}"
 ```
 
-## Kết Quả Chạy Thật
+## Ket Qua Chay That
 
-Dán output của các lệnh trên vào đây:
+Local fallback duoc dung vi chua co phien deploy Railway/Render trong moi truong nay.
+Stack chay bang Docker Compose, public gateway local la Nginx tai `http://localhost:8000`.
 
+Ket qua mong doi:
+
+```text
+GET /health -> 200
+GET /ready -> 200
+POST /ask without X-API-Key -> 401
+POST /ask with X-API-Key -> 200
 ```
-(điền output)
-```
 
-## Ảnh Chụp Màn Hình
+## Anh Chup Man Hinh
 
-Đặt ảnh trong thư mục `screenshots/`:
+Dat anh minh chung trong thu muc `screenshots/`, vi du:
 
-- `screenshots/dashboard.png` — trang quản lý service trên platform
-- `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl
+- `screenshots/dashboard.png`: Docker Desktop hoac terminal `docker compose ps`
+- `screenshots/health.png`: ket qua goi `/health`, `/ready`, `/ask`
 
----
+## Neu Dung Phuong An Du Phong
 
-## Nếu Dùng Phương Án Dự Phòng
-
-Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng CP5 tối đa 60% điểm:
-
-1. Đặt `LOCAL_FALLBACK=true` trong `.env`
-2. Chạy `docker compose up -d` rồi kiểm tra `docker compose ps`
-3. Chụp màn hình vào `screenshots/`
-4. Chạy `pytest tests/test_cp5.py -v` — bộ test sẽ tự chuyển sang kiểm tra
-   `http://localhost:8000`
-5. Ghi rõ lý do không deploy được vào phần dưới đây:
-
-```
-(điền lý do nếu dùng phương án dự phòng, ngược lại xóa mục này)
-```
+Da dung local fallback do khong co thong tin dang nhap cloud Railway/Render trong phien lam viec nay. Bien `LOCAL_FALLBACK=true` da duoc dat trong `.env`.

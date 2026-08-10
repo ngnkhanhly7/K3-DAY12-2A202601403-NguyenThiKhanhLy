@@ -1,38 +1,22 @@
-"""CP1 — Cấu hình theo 12-Factor.
-
-Nguyên tắc: **không có giá trị cấu hình nào nằm trong code**. Tất cả đến từ
-biến môi trường, để cùng một image chạy được ở laptop, staging và production
-mà không phải sửa một dòng code nào.
-"""
+"""CP1 - 12-Factor configuration."""
 
 from __future__ import annotations
 
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Toàn bộ cấu hình của service.
+    """Application configuration loaded from environment variables."""
 
-    TODO (CP1): khai báo các trường dưới đây. pydantic-settings tự đọc biến
-    môi trường theo tên trường (không phân biệt hoa thường), nên trường
-    ``agent_api_key`` sẽ lấy giá trị từ biến ``AGENT_API_KEY``.
-
-    | Trường                  | Kiểu  | Mặc định                   |
-    |-------------------------|-------|----------------------------|
-    | port                    | int   | 8000                       |
-    | agent_api_key           | str   | KHÔNG có mặc định (bắt buộc)|
-    | redis_url               | str   | "redis://localhost:6379/0" |
-    | rate_limit_per_minute   | int   | 10                         |
-    | monthly_budget_usd      | float | 10.0                       |
-    | log_level               | str   | "INFO"                     |
-
-    Vì sao ``agent_api_key`` không được có giá trị mặc định? Vì mặc định
-    nghĩa là app vẫn khởi động khi bạn quên set secret trên cloud — và bạn
-    chỉ phát hiện ra khi ai đó đã gọi API miễn phí bằng khóa mặc định đó.
-    Không mặc định = fail fast ngay lúc khởi động.
-    """
+    port: int = 8000
+    agent_api_key: str
+    redis_url: str = "redis://localhost:6379/0"
+    rate_limit_per_minute: int = 10
+    monthly_budget_usd: float = 10.0
+    log_level: str = "INFO"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -40,12 +24,26 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # TODO (CP1): khai báo 6 trường theo bảng trên, ví dụ:
-    #     port: int = 8000
-    #     agent_api_key: str
+    @field_validator("agent_api_key")
+    @classmethod
+    def validate_agent_api_key(cls, value: str) -> str:
+        key = value.strip()
+        placeholders = {
+            "",
+            "changeme",
+            "change-me",
+            "your-api-key",
+            "your-secret-key",
+            "your-secret-key-here",
+            "replace-me",
+            "todo",
+        }
+        if key.lower() in placeholders:
+            raise ValueError("AGENT_API_KEY must be a real secret")
+        return key
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Đọc cấu hình một lần rồi cache lại (đọc env mỗi request là lãng phí)."""
+    """Read configuration once and cache it."""
     return Settings()
